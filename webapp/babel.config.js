@@ -8,17 +8,16 @@ const config = {
                 safari: 12,
             },
             modules: false,
-            corejs: 3,
             debug: false,
-            useBuiltIns: 'usage',
-            shippedProposals: true,
         }],
         ['@babel/preset-react', {
-            useBuiltIns: true,
+            runtime: 'classic',
         }],
-        ['@babel/preset-typescript', {
-            allExtensions: true,
-            isTSX: true,
+        ['@babel/preset-typescript'],
+    ],
+    plugins: [
+        ['polyfill-corejs3', {
+            method: 'usage-global',
         }],
     ],
 };
