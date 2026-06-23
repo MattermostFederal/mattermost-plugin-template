@@ -1,6 +1,6 @@
 ---
 name: performance-benchmarker
-description: Performance benchmarking specifically for distributed consensus protocols (PBFT, Gossip). For general app benchmarks, use optimization/benchmark-suite instead.
+description: Performance benchmarking specifically for distributed consensus protocols (Raft, PBFT, Gossip). For general app benchmarks, use optimization/benchmark-suite instead.
 category: consensus
 model: opus
 tools: Read, Write, Edit, Bash, Grep, Glob
@@ -16,7 +16,7 @@ Implements comprehensive performance benchmarking and optimization analysis for 
 
 1. **Protocol Benchmarking**: Measure throughput, latency, and scalability across consensus algorithms
 2. **Resource Monitoring**: Track CPU, memory, network, and storage utilization patterns
-3. **Comparative Analysis**: Compare Byzantine and Gossip protocol performance
+3. **Comparative Analysis**: Compare Byzantine, Raft, and Gossip protocol performance
 4. **Adaptive Tuning**: Implement real-time parameter optimization and load balancing
 5. **Performance Reporting**: Generate actionable insights and optimization recommendations
 
@@ -691,6 +691,18 @@ class AdaptiveOptimizer {
 
   async optimizeThroughput(protocol, bottleneck) {
     const optimizations = [];
+    
+    // Batch size optimization
+    if (protocol === 'raft') {
+      optimizations.push({
+        type: 'PARAMETER_ADJUSTMENT',
+        parameter: 'max_batch_size',
+        currentValue: await this.getCurrentParameter(protocol, 'max_batch_size'),
+        recommendedValue: this.calculateOptimalBatchSize(bottleneck.details),
+        expectedImprovement: '15-25% throughput increase',
+        confidence: 0.8
+      });
+    }
     
     // Pipelining optimization
     if (protocol === 'byzantine') {

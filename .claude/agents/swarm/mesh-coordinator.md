@@ -219,7 +219,21 @@ Commit Phase:
   - Reply to client with operation result
 ```
 
-### 2. Gossip-Based Consensus
+### 2. Raft Consensus
+```yaml
+Leader Election:
+  - Nodes start as followers with random timeout
+  - Become candidate if no heartbeat from leader
+  - Win election with majority votes
+
+Log Replication:
+  - Leader receives client requests
+  - Appends to local log and replicates to followers
+  - Commits entry when majority acknowledges
+  - Applies committed entries to state machine
+```
+
+### 3. Gossip-Based Consensus
 ```yaml
 Epidemic Protocols:
   - Anti-entropy: Periodic state reconciliation

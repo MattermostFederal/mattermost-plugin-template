@@ -371,7 +371,7 @@ npx ruv-swarm github health-check \
 {
   "sync": {
     "strategy": "strong",
-    "consensus": "paxos",
+    "consensus": "raft",
     "quorum": 0.51,
     "timeout": "30s"
   }
