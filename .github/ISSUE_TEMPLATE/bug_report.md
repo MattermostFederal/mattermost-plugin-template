@@ -29,9 +29,9 @@ assignees: ''
 ## Logs / output
 
 <!-- Paste relevant lines from the MM server log (System Console >
-     Logs). Wrap in ``` so they render. Scrub any tokens/URLs first. -->
+     Logs). Wrap in a fenced block so they render. Scrub any tokens/URLs first. -->
 
-```
+```text
 ```
 
 ## Additional context
