@@ -457,9 +457,10 @@ install-sbom-tools:
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
 install-grype:
-	@if ! command -v $(GOBIN)/grype >/dev/null 2>&1; then \
-		echo "Installing Grype..."; \
-		curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $(GOBIN); \
+	@if [ ! -x "$(GOBIN)/grype" ]; then \
+		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
+		mkdir -p $(GOBIN); \
+		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@latest; \
 	else \
 		echo "Grype already installed"; \
 	fi
