@@ -1,0 +1,82 @@
+# Dependabot config: scheduled dependency updates across every
+# ecosystem this plugin ships from — Go server, npm webapp, and the
+# GitHub Actions that run CI. PRs land Monday mornings so weekly
+# review is predictable; per-ecosystem open-PR caps keep review load
+# sane on a low-traffic template repo.
+#
+# Security updates (separate from the version updates configured here)
+# are enabled at the repo level too — those fire immediately when a
+# GHSA advisory lands against a pinned dep, regardless of this schedule.
+
+version: 2
+updates:
+  # Go modules — the plugin server. Single module rooted at the repo
+  # root (build/manifest and build/pluginctl are packages inside it,
+  # not separate go.mod files), so one entry covers the whole server.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+    commit-message:
+      prefix: "deps(go)"
+      include: scope
+    groups:
+      # Group minor + patch bumps into one PR to keep review noise low.
+      # Majors stay separate — they carry breaking changes worth a
+      # dedicated review.
+      go-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # npm — the webapp. Grouped the same way as Go: minor/patch batched,
+  # majors isolated.
+  - package-ecosystem: npm
+    directory: /webapp
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+    commit-message:
+      prefix: "deps(webapp)"
+      include: scope
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used by .github/workflows/*.yml. We pin every action
+  # to a full commit SHA (supply-chain hardening — a moved tag can't
+  # swap the code out from under us). SHA pins don't auto-update the way
+  # @v4 tag users get, so Dependabot is what keeps them current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "deps(actions)"
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
