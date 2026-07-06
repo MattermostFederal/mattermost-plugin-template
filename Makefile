@@ -533,6 +533,7 @@ ifneq ($(HAS_SERVER),)
 	@echo "Running CodeQL analysis on Go code..."
 	@rm -rf $(CODEQL_DB_DIR)/go
 	@mkdir -p $(CODEQL_DB_DIR)/go
+	@mkdir -p dist
 	$(CODEQL) database create $(CODEQL_DB_DIR)/go --language=go --source-root=server --overwrite
 	$(CODEQL) database analyze $(CODEQL_DB_DIR)/go --format=sarif-latest --output=dist/codeql-go.sarif -- codeql/go-queries
 	@echo "Go CodeQL results: dist/codeql-go.sarif"
@@ -545,6 +546,7 @@ ifneq ($(HAS_WEBAPP),)
 	@echo "Running CodeQL analysis on JavaScript/TypeScript code..."
 	@rm -rf $(CODEQL_DB_DIR)/js
 	@mkdir -p $(CODEQL_DB_DIR)/js
+	@mkdir -p dist
 	$(CODEQL) database create $(CODEQL_DB_DIR)/js --language=javascript --source-root=webapp --overwrite
 	$(CODEQL) database analyze $(CODEQL_DB_DIR)/js --format=sarif-latest --output=dist/codeql-js.sarif -- codeql/javascript-queries
 	@echo "JavaScript/TypeScript CodeQL results: dist/codeql-js.sarif"
