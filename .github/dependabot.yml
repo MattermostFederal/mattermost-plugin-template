@@ -25,8 +25,12 @@ updates:
       - dependencies
       - go
     commit-message:
+      # No `include: scope` — the prefix already carries the ecosystem
+      # scope "(go)". Adding include:scope appends the dependency-type
+      # scope too, producing "deps(go)(deps):" — a double scope that isn't
+      # valid Conventional Commit syntax, so release-please can't parse it
+      # and drops the bump from the changelog.
       prefix: "deps(go)"
-      include: scope
     groups:
       # Group minor + patch bumps into one PR to keep review noise low.
       # Majors stay separate — they carry breaking changes worth a
@@ -50,13 +54,23 @@ updates:
       - dependencies
       - javascript
     commit-message:
+      # No `include: scope` — see the go entry above. "deps(webapp)"
+      # already scopes the ecosystem; include:scope would produce
+      # "deps(webapp)(deps-dev):" which release-please can't parse.
       prefix: "deps(webapp)"
-      include: scope
     groups:
       npm-minor-patch:
         update-types:
           - minor
           - patch
+    ignore:
+      # eslint 10 removed context.getFilename(), which eslint-plugin-react
+      # (and other flat-config plugins) still call — so a major eslint bump
+      # breaks `make check-style` outright. Hold majors until the plugin
+      # ecosystem catches up; minor/patch on eslint 9.x still flow through.
+      - dependency-name: eslint
+        update-types:
+          - version-update:semver-major
 
   # GitHub Actions used by .github/workflows/*.yml. We pin every action
   # to a full commit SHA (supply-chain hardening — a moved tag can't
