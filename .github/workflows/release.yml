@@ -1,3 +1,18 @@
+# Fires on a v* tag push (normally created when the release-please PR is
+# merged). Runs the full security-gated release pipeline via `make
+# release`, which chains:
+#   release-check -> clean -> all -> sbom-audit -> codeql-analyze
+#   -> security-gate -> release-bundle -> virus-scan -> release-sign
+#   -> release-checksum
+#
+# The published tarball ships with SBOMs (sbom/) and CodeQL SARIF
+# (security/) embedded, plus a sha256 sidecar and — when a signing key
+# is configured — a detached GPG signature. Same `make release` a
+# developer runs locally, so nothing about the release is CI-only.
+#
+# To ship manually instead of via release-please:
+#   1. Bump plugin.json version + add a CHANGELOG.md entry (commit them)
+#   2. git tag -a v0.2.0 -m "release v0.2.0" && git push origin v0.2.0
 name: Release
 
 on:
@@ -6,39 +21,69 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: write        # create the release + upload assets
+  security-events: write # upload SARIF to code scanning
 
 jobs:
   build:
     runs-on: ubuntu-latest-4-cores
-
+    env:
+      # Surfaced so the "Import GPG signing key" step can gate on
+      # presence. Optional — signing is skipped when unset.
+      PLUGIN_SIGNING_KEY_SECRET: ${{ secrets.PLUGIN_SIGNING_KEY }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          go-version: '1.26'
+          # action-gh-release generates notes from git history between
+          # tags; the default depth-1 checkout makes those notes empty.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
           cache: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version-file: .nvmrc
+          cache: npm
           cache-dependency-path: webapp/package-lock.json
 
-      - name: Install Go tools
-        run: make install-go-tools
-
       - name: Install webapp dependencies
-        run: cd webapp && npm install
+        run: cd webapp && npm ci
 
       - name: Install Playwright browsers
         run: cd webapp && npx playwright install --with-deps chromium
 
-      - name: Build release
+      # Pre-install ClamAV and seed its DB so `make virus-scan` finds
+      # clamscan already present. freshclam is best-effort — the apt
+      # package ships a baseline DB, so a failed update won't sink the
+      # release.
+      - name: Install ClamAV
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav
+          sudo systemctl stop clamav-freshclam 2>/dev/null || true
+          sudo freshclam || true
+
+      # Import the GPG key only when the secret is set. The step exports
+      # the resolved key ID as PLUGIN_SIGNING_KEY so `make release-sign`
+      # picks it up; without it, signing is a no-op.
+      - name: Import GPG signing key
+        if: env.PLUGIN_SIGNING_KEY_SECRET != ''
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_KEY_PASSPHRASE }}
+        run: |
+          echo "$PLUGIN_SIGNING_KEY" | gpg --batch --import
+          echo "PLUGIN_SIGNING_KEY=$(gpg --list-secret-keys --keyid-format=long | awk -F'/' '/^sec/{print $2; exit}' | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      # The whole security-gated pipeline in one target — keeps CI and
+      # local `make release` identical.
+      - name: Build release (full security pipeline)
         run: make release
 
       - name: Get plugin info
@@ -47,32 +92,64 @@ jobs:
           PLUGIN_ID=$(build/bin/manifest id)
           PLUGIN_VERSION=$(build/bin/manifest version)
           BUNDLE_NAME="${PLUGIN_ID}-${PLUGIN_VERSION}.tar.gz"
-          echo "plugin_id=${PLUGIN_ID}" >> $GITHUB_OUTPUT
-          echo "plugin_version=${PLUGIN_VERSION}" >> $GITHUB_OUTPUT
-          echo "bundle_name=${BUNDLE_NAME}" >> $GITHUB_OUTPUT
+          echo "plugin_id=${PLUGIN_ID}" >> "$GITHUB_OUTPUT"
+          echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "bundle_name=${BUNDLE_NAME}" >> "$GITHUB_OUTPUT"
+
+      # Push CodeQL findings to the Security tab for this release ref.
+      # Best-effort per-language — a webapp-only or server-only plugin
+      # won't produce both SARIFs.
+      - name: Upload Go CodeQL SARIF to code scanning
+        if: always() && hashFiles('dist/codeql-go.sarif') != ''
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          sarif_file: dist/codeql-go.sarif
+          category: codeql-go-release
+
+      - name: Upload JS/TS CodeQL SARIF to code scanning
+        if: always() && hashFiles('dist/codeql-js.sarif') != ''
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          sarif_file: dist/codeql-js.sarif
+          category: codeql-js-release
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           name: ${{ steps.plugin_info.outputs.plugin_id }} v${{ steps.plugin_info.outputs.plugin_version }}
-          body: |
-            ## Installation
-
-            1. Download `${{ steps.plugin_info.outputs.bundle_name }}`
-            2. Go to **System Console > Plugins > Plugin Management**
-            3. Upload the plugin bundle
-            4. Enable the plugin
-
-            ## Checksums
-
-            SHA256 checksums are available in `${{ steps.plugin_info.outputs.bundle_name }}.sha256`
-
-            ## SBOMs
-
-            Software Bill of Materials (CycloneDX format) are included in the plugin bundle under the `sbom/` directory.
           files: |
             dist/${{ steps.plugin_info.outputs.bundle_name }}
             dist/${{ steps.plugin_info.outputs.bundle_name }}.sha256
+            dist/${{ steps.plugin_info.outputs.bundle_name }}.sig
+            dist/sbom/server-sbom.json
+            dist/sbom/webapp-sbom.json
+            dist/codeql-go.sarif
+            dist/codeql-js.sarif
+          fail_on_unmatched_files: false
+          generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
-          generate_release_notes: true
+          body: |
+            ## ${{ steps.plugin_info.outputs.plugin_id }} ${{ github.ref_name }}
+
+            See [`CHANGELOG.md`](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for curated release notes.
+
+            ### Install
+
+            1. Download `${{ steps.plugin_info.outputs.bundle_name }}` from the assets below.
+            2. (Optional) Verify the checksum:
+               ```bash
+               sha256sum -c ${{ steps.plugin_info.outputs.bundle_name }}.sha256
+               ```
+            3. (Optional) Verify the GPG signature, if a `.sig` is attached:
+               ```bash
+               gpg --verify ${{ steps.plugin_info.outputs.bundle_name }}.sig ${{ steps.plugin_info.outputs.bundle_name }}
+               ```
+            4. Upload via **System Console → Plugin Management → Choose File → Enable**.
+
+            ### Supply-chain artifacts
+
+            - **SBOM** (CycloneDX JSON): `server-sbom.json` / `webapp-sbom.json` list every dependency in the shipped bundle. Also embedded under `sbom/` inside the tarball.
+            - **CodeQL SARIF**: `codeql-go.sarif` / `codeql-js.sarif` are the static-analysis results that gated this build. Also embedded under `security/` inside the tarball.
+
+            ### Auto-generated changelog

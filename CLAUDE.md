@@ -25,3 +25,41 @@ This is a minimal Mattermost plugin template. The server is written in Go and th
 - `make check-style` - lint both Go and webapp code
 - `make test` - run tests
 - `make deploy` - build and deploy to a running Mattermost server
+
+## Commits and releases
+
+This repo automates releases with **release-please** driven by
+[Conventional Commits](https://www.conventionalcommits.org/). Full details live
+in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
+
+- **Write conventional commit subjects** (and PR titles, since PRs squash-merge).
+  The prefix drives the version bump: `feat:` → minor, `fix:`/`perf:`/`deps:` →
+  patch, `feat!:` or a `BREAKING CHANGE:` footer → major. `chore:`/`docs:`/
+  `test:`/`refactor:`/`style:`/`build:`/`ci:` don't bump or appear in the
+  changelog.
+- **Do not** hand-edit `plugin.json`'s `version` or `CHANGELOG.md` for a normal
+  release — release-please owns them via its Release PR. The version is seeded at
+  `0.1.0`.
+- A release ships when the maintainer merges the open "chore(main): release
+  X.Y.Z" PR, which tags `vX.Y.Z` and fires `release.yml`.
+
+## CI and security
+
+Workflows live in `.github/workflows/`: `pr.yml` (style/test/build), `security.yml`
+(SBOM + Grype + CodeQL → Code Scanning), `release-please.yml`, and `release.yml`.
+Everything is reproducible locally through `make` — CI runs the same targets, so
+verify changes with these before pushing:
+
+- `make check-style && make test` - what `pr.yml` gates on
+- `make sbom-audit` - dependency CVE scan (fails on HIGH/CRITICAL)
+- `make codeql-analyze && make security-gate` - static analysis + finding gate
+- `make release` - the full security-gated pipeline `release.yml` runs on a tag
+
+When touching dependencies or adding code, expect the security workflow to gate
+the PR. Suppress false-positive CVEs in `.grype.yaml` with a documented reason
+(never blanket-ignore). See [`docs/SECURITY.md`](docs/SECURITY.md) for the full
+process, the Code Scanning requirement, and release signing.
+
+GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. When
+adding or bumping an action, resolve the tag to its commit SHA and keep the
+comment accurate — don't use floating tags like `@v4`.
