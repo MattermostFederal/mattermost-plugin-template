@@ -41,14 +41,19 @@ appear inline on PRs and in the Security tab.
 
 ## Requirement: enable Code Scanning
 
-The SARIF upload steps are **not** best-effort — if Code Scanning is off, they
-fail and the workflow goes red. That's deliberate: security findings must reach
-the Security tab where reviewers see them.
+The SARIF upload steps are **visibility-aware** via
+`continue-on-error: ${{ github.event.repository.private }}`:
+
+- On **public** repos the upload is required — if Code Scanning is off it fails
+  and the workflow goes red, so findings reach the Security tab.
+- On **private** repos (where Code Scanning needs paid GitHub Advanced Security)
+  the upload is tolerated — a missing GHAS license doesn't fail CI.
 
 - **Public repos:** free. Enable under **Settings → Code security and analysis**.
 - **Private repos:** requires GitHub Advanced Security (paid). If you can't
-  enable it, remove the `upload-sarif` steps from `security.yml` / `release.yml`
-  and rely on the `make security-gate` / Grype `--fail-on high` gates instead.
+  enable it, **keep** the `upload-sarif` steps as-is — the `continue-on-error`
+  above already tolerates the failed upload. The `make security-gate` / Grype
+  `--fail-on high` gates remain the real enforcement either way.
 
 ## Running the checks locally
 
