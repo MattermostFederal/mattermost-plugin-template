@@ -71,6 +71,15 @@ updates:
       - dependency-name: eslint
         update-types:
           - version-update:semver-major
+      # TypeScript 7 is the native (Go-port) rewrite; its internal API
+      # changed and the pinned @typescript-eslint's typescript-estree crashes
+      # loading it ("Cannot read properties of undefined (reading 'Cjs')"),
+      # which breaks `make check-style` / the build. Hold TS majors until the
+      # eslint + build toolchain supports TS 7 (bump them together in a
+      # deliberate migration). Minor/patch on the current major still flow.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   # GitHub Actions used by .github/workflows/*.yml. We pin every action
   # to a full commit SHA (supply-chain hardening — a moved tag can't
