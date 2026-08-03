@@ -33,7 +33,7 @@ jobs:
       PLUGIN_SIGNING_KEY_SECRET: ${{ secrets.PLUGIN_SIGNING_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # action-gh-release generates notes from git history between
           # tags; the default depth-1 checkout makes those notes empty.
@@ -105,14 +105,14 @@ jobs:
       # won't produce both SARIFs.
       - name: Upload Go CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-go.sarif') != ''
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
         with:
           sarif_file: dist/codeql-go.sarif
           category: codeql-go-release
 
       - name: Upload JS/TS CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-js.sarif') != ''
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
         with:
           sarif_file: dist/codeql-js.sarif
           category: codeql-js-release
