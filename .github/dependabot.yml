@@ -39,6 +39,17 @@ updates:
         update-types:
           - minor
           - patch
+      # Group ALL security fixes into one PR per Dependabot run. Without
+      # this, security updates default to one-PR-per-advisory, and when
+      # two advisories land close together neither PR can pass the required
+      # `SBOM + Grype --fail-on high` gate alone — each still carries the
+      # other's unpatched HIGH — deadlocking a strict, admin-enforced main.
+      # applies-to:security-updates is required; a group without it only
+      # covers version updates.
+      security-all:
+        applies-to: security-updates
+        patterns:
+          - '*'
 
   # npm — the webapp. Grouped the same way as Go: minor/patch batched,
   # majors isolated.
@@ -63,6 +74,12 @@ updates:
         update-types:
           - minor
           - patch
+      # The webapp SBOM is Grype-gated at HIGH too (grype-webapp job), so
+      # npm security fixes face the same deadlock risk as Go — group them.
+      security-all:
+        applies-to: security-updates
+        patterns:
+          - '*'
     ignore:
       # eslint 10 removed context.getFilename(), which eslint-plugin-react
       # (and other flat-config plugins) still call — so a major eslint bump
