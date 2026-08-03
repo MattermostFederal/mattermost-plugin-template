@@ -450,20 +450,21 @@ deploy: docker-deploy
 ## locally-running server directly - useful when you develop against your own
 ## Mattermost rather than the bundled Docker environment.
 ##
-## pluginctl authenticates via one of:
-##   - MM_LOCALSOCKETPATH   (unix socket, mattermost-server local mode), or
-##   - MM_ADMIN_TOKEN       (an admin personal access token)
+## pluginctl authenticates via one of (it validates and picks natively):
+##   - Local mode (auto-detected default socket, or MM_LOCALSOCKETPATH), or
+##   - MM_ADMIN_TOKEN                          (an admin personal access token), or
+##   - MM_ADMIN_USERNAME + MM_ADMIN_PASSWORD   (admin login)
 ## Override the target server with `make deploy-local MM_LOCAL_SITEURL=...`.
 MM_LOCAL_SITEURL ?= http://localhost:8065
 .PHONY: deploy-local
 deploy-local: dist
-	@if [ -z "$(MM_ADMIN_TOKEN)" ] && [ -z "$(MM_LOCALSOCKETPATH)" ]; then \
-		echo "deploy-local needs auth: set MM_ADMIN_TOKEN (admin PAT) or MM_LOCALSOCKETPATH."; \
+	@MM_SERVICESETTINGS_SITEURL=$(MM_LOCAL_SITEURL) ./build/bin/pluginctl deploy $(PLUGIN_ID) dist/$(BUNDLE_NAME) || { \
+		status=$$?; \
+		echo "deploy-local failed. pluginctl authenticates via local mode (default socket or MM_LOCALSOCKETPATH), MM_ADMIN_TOKEN, or MM_ADMIN_USERNAME + MM_ADMIN_PASSWORD."; \
 		echo "Or, with an already-authenticated mmctl, install directly:"; \
 		echo "  mmctl plugin add dist/$(BUNDLE_NAME) --force && mmctl plugin enable $(PLUGIN_ID)"; \
-		exit 1; \
-	fi
-	MM_SERVICESETTINGS_SITEURL=$(MM_LOCAL_SITEURL) ./build/bin/pluginctl deploy $(PLUGIN_ID) dist/$(BUNDLE_NAME)
+		exit $$status; \
+	}
 
 # ====================================================================================
 # SBOM & Vulnerability Scanning
