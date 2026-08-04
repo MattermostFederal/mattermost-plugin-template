@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.1.2...v0.1.3) (2026-08-03)
+
+
+### Bug Fixes
+
+* **deps:** bump Go + npm deps to clear HIGH CVEs blocking the Grype gate ([55f9fb7](https://github.com/MattermostFederal/mattermost-plugin-template/commit/55f9fb7c57b0e02aa524830bedc81d174f61cc26))
+
+
+### Dependencies
+
+* **actions:** Bump actions/setup-go from 6.5.0 to 7.0.0 ([8980846](https://github.com/MattermostFederal/mattermost-plugin-template/commit/8980846a8030dd758982386476e5023dc9ba69ba))
+* **actions:** Bump actions/setup-node from 6.4.0 to 7.0.0 ([d0c713b](https://github.com/MattermostFederal/mattermost-plugin-template/commit/d0c713b529928e2f47d30d765c987d2aa1271109))
+* **actions:** Bump the actions-minor-patch group across 1 directory with 2 updates ([cf33824](https://github.com/MattermostFederal/mattermost-plugin-template/commit/cf3382450a1698d35aa804a94e55d5abde4cddf0))
+* **webapp:** Bump the npm-minor-patch group across 1 directory with 13 updates ([2843573](https://github.com/MattermostFederal/mattermost-plugin-template/commit/2843573c6128bb24eb60b7a9f3f8262b7358a2cf))
+
 ## [0.1.2](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.1.1...v0.1.2) (2026-07-13)
 
 
