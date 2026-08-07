@@ -2,6 +2,76 @@ GO ?= $(shell command -v go 2> /dev/null)
 NPM ?= $(shell command -v npm 2> /dev/null)
 CURL ?= $(shell command -v curl 2> /dev/null)
 MM_DEBUG ?=
+
+# ====================================================================================
+# Enclave / offline build support
+#
+# `make enclave-stage` runs on a networked machine and gathers everything `make
+# dist` needs: Go modules into vendor/, npm packages into build/enclave/.
+# `make enclave-bundle` packs those with the source into a single tarball;
+# inside the enclave, `make dist` then builds with no network.
+#
+# Both are generated artifacts, deliberately gitignored rather than committed:
+# plugins that never target an enclave carry no cost, and there is no vendor
+# tree that can drift from go.mod as dependencies are bumped.
+#
+# See docs/ENCLAVE.md for the full procedure.
+# ====================================================================================
+
+ENCLAVE_DIR ?= $(CURDIR)/build/enclave
+NPM_CACHE_DIR ?= $(ENCLAVE_DIR)/npm-cache
+
+# npm resolves some transitive dependencies (lightningcss, @parcel/watcher) to
+# prebuilt, platform-specific binaries. Stage every platform the enclave might
+# build on, so the bundle does not depend on which machine staged it.
+ENCLAVE_NPM_PLATFORMS ?= linux/x64/glibc linux/arm64/glibc linux/x64/musl darwin/arm64 darwin/x64
+
+# Node major version the webapp build requires; kept in sync with .nvmrc.
+ENCLAVE_NODE_VERSION ?= $(shell cat .nvmrc 2>/dev/null)
+
+# Offline mode enables itself inside a shipped bundle, which `make
+# enclave-bundle` marks with build/enclave/OFFLINE. Deliberately not keyed off
+# the npm cache: that also exists on the machine that did the staging, which
+# still needs a normal networked build. Force it on with OFFLINE=1 to prove a
+# build needs no network, or off with OFFLINE=0.
+ifeq ($(origin OFFLINE), undefined)
+    OFFLINE := $(if $(wildcard $(ENCLAVE_DIR)/OFFLINE),1,)
+endif
+ifeq ($(OFFLINE),0)
+    OFFLINE :=
+endif
+
+ifneq ($(OFFLINE),)
+    # Resolve Go packages from vendor/ only, and refuse module fetches outright so
+    # a missing dependency fails loudly here rather than silently reaching out.
+    GOFLAGS := -mod=vendor $(GOFLAGS)
+    GOPROXY := off
+    # Never download a Go toolchain: go.mod names a specific version, and the
+    # default GOTOOLCHAIN=auto would fetch it from the module proxy. The enclave
+    # must provide it; `make enclave-preflight` checks that it does.
+    GOTOOLCHAIN := local
+    export GOFLAGS GOPROXY GOTOOLCHAIN
+    # --ignore-scripts is required, not just tidiness: webapp's postinstall runs
+    # `playwright install chromium`, which fetches ~400MB of browsers from the
+    # Playwright CDN and fails the build with no network. (Note that
+    # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD does NOT help here -- it is only honoured
+    # by the playwright package's own postinstall, not by an explicit
+    # `playwright install` invocation.) Browsers are a `make test` dependency and
+    # are never needed to build the plugin. The only other install scripts in the
+    # tree are core-js's funding banner and the optional, test-only
+    # @parcel/watcher and fsevents, none of which the webpack build uses.
+    NPM_INSTALL_ARGS := ci --offline --ignore-scripts --cache $(NPM_CACHE_DIR) --no-audit --no-fund
+else
+    # Go switches to vendor mode automatically whenever a vendor/ directory is
+    # present. Pin -mod=mod so that a vendor/ left behind by an earlier staging
+    # run cannot change how a normal networked build resolves packages, or fail
+    # it with "inconsistent vendoring" after a go.mod bump. Prepended, so an
+    # explicit GOFLAGS from the environment still wins.
+    GOFLAGS := -mod=mod $(GOFLAGS)
+    export GOFLAGS
+    NPM_INSTALL_ARGS := install
+endif
+
 GOPATH ?= $(shell go env GOPATH)
 GO_TEST_FLAGS ?= -race
 GO_BUILD_FLAGS ?=
@@ -165,9 +235,16 @@ endif
 endif
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
-webapp/node_modules: $(wildcard webapp/package.json)
+webapp/node_modules: $(wildcard webapp/package.json) $(wildcard webapp/package-lock.json)
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) install
+ifneq ($(OFFLINE),)
+	@if [ ! -d "$(NPM_CACHE_DIR)" ]; then \
+		echo "ERROR: offline build requested but no staged npm cache at $(NPM_CACHE_DIR)."; \
+		echo "Run 'make enclave-stage' on a networked machine, or build with OFFLINE=0."; \
+		exit 1; \
+	fi
+endif
+	cd webapp && $(NPM) $(NPM_INSTALL_ARGS)
 	touch $@
 endif
 
@@ -215,11 +292,152 @@ endif
 dist: apply server webapp bundle
 
 # ====================================================================================
+# Enclave Targets
+#
+# `make enclave-bundle` (networked machine) -> carry tarball in -> `make dist`.
+# ====================================================================================
+
+ENCLAVE_SRC_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION)-enclave
+ENCLAVE_BUNDLE_NAME ?= $(ENCLAVE_SRC_NAME).tar.gz
+ENCLAVE_STAGE_TMP := $(ENCLAVE_DIR)/.npm-stage
+
+# Source paths carried into the enclave. Everything `make dist` reads, plus the
+# vendored Go modules and the staged npm cache under build/.
+ENCLAVE_BUNDLE_PATHS ?= Makefile plugin.json go.mod go.sum vendor build server webapp assets \
+	$(wildcard public) $(wildcard docs) $(wildcard README.md) $(wildcard LICENSE) \
+	$(wildcard CHANGELOG.md) $(wildcard .nvmrc) $(wildcard .golangci.yml) $(wildcard .gitattributes)
+
+# Host-specific or regenerable artifacts that must not travel in the bundle.
+ENCLAVE_BUNDLE_EXCLUDES ?= --exclude=node_modules --exclude=build/bin --exclude=build/codeql \
+	--exclude=build/codeql-db --exclude=server/dist --exclude=webapp/dist --exclude=.eslintcache \
+	--exclude=.DS_Store --exclude=coverage --exclude=coverage-ct --exclude=test-results
+
+## Verify the enclave provides the toolchain and staged dependencies the build needs.
+.PHONY: enclave-preflight
+enclave-preflight:
+	@echo "Checking enclave build prerequisites..."
+	@failed=0; \
+	if [ -z "$(GO)" ]; then \
+		echo "  FAIL  go not found on PATH"; failed=1; \
+	elif ! out=$$(GOTOOLCHAIN=local $(GO) list -m 2>&1); then \
+		echo "  FAIL  Go toolchain too old for go.mod, and GOTOOLCHAIN=local forbids downloading one:"; \
+		echo "        $$out"; failed=1; \
+	else \
+		echo "  OK    Go toolchain: $$(GOTOOLCHAIN=local $(GO) env GOVERSION)"; \
+	fi; \
+	if [ -f vendor/modules.txt ]; then \
+		echo "  OK    Go modules vendored: $$(grep -c '^# ' vendor/modules.txt) modules in vendor/"; \
+	else \
+		echo "  FAIL  vendor/modules.txt missing; run 'make enclave-stage' on a networked machine"; failed=1; \
+	fi; \
+	if [ -z "$(NPM)" ]; then \
+		echo "  FAIL  npm not found on PATH"; failed=1; \
+	else \
+		echo "  OK    npm $$($(NPM) --version)"; \
+	fi; \
+	if ! command -v node >/dev/null 2>&1; then \
+		echo "  FAIL  node not found on PATH"; failed=1; \
+	else \
+		have=$$(node --version | sed 's/^v//' | cut -d. -f1); \
+		want=$$(echo "$(ENCLAVE_NODE_VERSION)" | cut -d. -f1); \
+		if [ -n "$$want" ] && [ "$$have" -lt "$$want" ]; then \
+			echo "  FAIL  node $$(node --version) is older than the required v$$want (see .nvmrc)"; failed=1; \
+		else \
+			echo "  OK    node $$(node --version)"; \
+		fi; \
+	fi; \
+	if [ -d "$(NPM_CACHE_DIR)" ]; then \
+		echo "  OK    npm cache staged at $(NPM_CACHE_DIR)"; \
+	else \
+		echo "  FAIL  no npm cache at $(NPM_CACHE_DIR); run 'make enclave-stage' on a networked machine"; failed=1; \
+	fi; \
+	if [ -n "$(OFFLINE)" ]; then \
+		echo "  OK    offline mode active (GOFLAGS=-mod=vendor GOPROXY=off GOTOOLCHAIN=local)"; \
+	else \
+		echo "  WARN  offline mode is off; this build may reach the network. Use OFFLINE=1 to forbid it."; \
+	fi; \
+	if [ "$$failed" -eq 1 ]; then \
+		echo ""; \
+		echo "Preflight FAILED. See docs/ENCLAVE.md."; \
+		exit 1; \
+	fi
+	@echo "Preflight passed; 'make dist' can build without network access."
+
+# These two targets are the online half of the workflow, so they must ignore the
+# offline constraints even if OFFLINE was forced on for the invocation.
+enclave-stage enclave-bundle: GOFLAGS :=
+enclave-stage enclave-bundle: GOPROXY :=
+enclave-stage enclave-bundle: GOTOOLCHAIN := auto
+
+## Stage every dependency the plugin build needs into vendor/ and build/enclave/ (requires network).
+.PHONY: enclave-stage
+enclave-stage:
+	@echo "==> Staging enclave build dependencies (this step requires network access)"
+	@echo "--> Vendoring Go modules into vendor/"
+	$(GO) mod vendor
+	@echo "--> Populating npm cache at $(NPM_CACHE_DIR)"
+	@rm -rf $(NPM_CACHE_DIR) $(ENCLAVE_STAGE_TMP)
+	@mkdir -p $(NPM_CACHE_DIR) $(ENCLAVE_STAGE_TMP)
+	@cp webapp/package.json webapp/package-lock.json $(ENCLAVE_STAGE_TMP)/
+	@if [ -f webapp/.npmrc ]; then cp webapp/.npmrc $(ENCLAVE_STAGE_TMP)/; fi
+	@set -e; for platform in $(ENCLAVE_NPM_PLATFORMS); do \
+		os=$$(echo $$platform | cut -d/ -f1); \
+		cpu=$$(echo $$platform | cut -d/ -f2); \
+		libc=$$(echo $$platform | cut -s -d/ -f3); \
+		echo "--> Caching npm packages for $$os/$$cpu$${libc:+/$$libc}"; \
+		( cd $(ENCLAVE_STAGE_TMP) && $(NPM) ci \
+			--cache $(NPM_CACHE_DIR) --os=$$os --cpu=$$cpu $${libc:+--libc=$$libc} \
+			--ignore-scripts --no-audit --no-fund >/dev/null ); \
+	done
+	@rm -rf $(ENCLAVE_STAGE_TMP)
+	@echo ""
+	@echo "Staged: vendor/ ($$(du -sh vendor | cut -f1)), $(NPM_CACHE_DIR) ($$(du -sh $(NPM_CACHE_DIR) | cut -f1))"
+	@echo "Verify with: make OFFLINE=1 clean dist"
+
+## Pack source, vendored Go modules and the staged npm cache into one tarball to carry into the enclave.
+.PHONY: enclave-bundle
+enclave-bundle: enclave-stage
+	@echo "==> Packing enclave bundle"
+	@rm -rf dist/enclave
+	@mkdir -p dist/enclave/$(ENCLAVE_SRC_NAME)
+	tar -cf - $(ENCLAVE_BUNDLE_EXCLUDES) $(ENCLAVE_BUNDLE_PATHS) | tar -xf - -C dist/enclave/$(ENCLAVE_SRC_NAME)
+	@# Marks the extracted tree as a shipped bundle so the build defaults to offline mode.
+	@mkdir -p dist/enclave/$(ENCLAVE_SRC_NAME)/build/enclave
+	@touch dist/enclave/$(ENCLAVE_SRC_NAME)/build/enclave/OFFLINE
+ifeq ($(shell uname),Darwin)
+	cd dist/enclave && tar --disable-copyfile -czf ../$(ENCLAVE_BUNDLE_NAME) $(ENCLAVE_SRC_NAME)
+else
+	cd dist/enclave && tar -czf ../$(ENCLAVE_BUNDLE_NAME) $(ENCLAVE_SRC_NAME)
+endif
+	@rm -rf dist/enclave
+	@echo ""
+	@echo "=========================================="
+	@echo "Enclave bundle: dist/$(ENCLAVE_BUNDLE_NAME) ($$(du -h dist/$(ENCLAVE_BUNDLE_NAME) | cut -f1))"
+	@echo ""
+	@echo "In the enclave:"
+	@echo "  tar -xzf $(ENCLAVE_BUNDLE_NAME)"
+	@echo "  cd $(ENCLAVE_SRC_NAME)"
+	@echo "  make enclave-preflight"
+	@echo "  make dist"
+	@echo "=========================================="
+
+# ====================================================================================
 # Quality Targets
 # ====================================================================================
 
+## Internal: fail fast when a target that downloads tooling is run in offline mode.
+.PHONY: require-network
+require-network:
+ifneq ($(OFFLINE),)
+	@echo "ERROR: this target downloads tooling and cannot run in offline mode."
+	@echo "Only the plugin build (make dist) is staged for the enclave; lint, test"
+	@echo "and security tooling must be run on a networked machine."
+	@echo "If this machine does have network access, override with OFFLINE=0."
+	@exit 1
+endif
+
 ## Install go tools
-install-go-tools:
+install-go-tools: require-network
 	@echo Installing go tools
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 	$(GO) install gotest.tools/gotestsum@v1.13.0
@@ -318,7 +536,7 @@ nuke: docker-kill-orphans
 
 ## Generate mocks
 .PHONY: mock
-mock:
+mock: require-network
 ifneq ($(HAS_SERVER),)
 	go install go.uber.org/mock/mockgen@v0.6.0
 	@echo "No mocks configured for this plugin. Add your mockgen commands here."
@@ -472,13 +690,13 @@ deploy-local: dist
 
 ## Install SBOM generation tools
 .PHONY: install-sbom-tools
-install-sbom-tools:
+install-sbom-tools: require-network
 	@echo "Installing SBOM generation tools..."
 	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
 
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
-install-grype:
+install-grype: require-network
 	@if [ ! -x "$(GOBIN)/grype" ]; then \
 		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
 		mkdir -p $(GOBIN); \
@@ -533,7 +751,7 @@ CODEQL_DB_DIR := $(PWD)/build/codeql-db
 
 ## Install CodeQL CLI
 .PHONY: install-codeql
-install-codeql:
+install-codeql: require-network
 	@if [ ! -f "$(CODEQL)" ]; then \
 		echo "Installing CodeQL CLI v$(CODEQL_VERSION)..."; \
 		mkdir -p $(CODEQL_DIR); \
@@ -608,7 +826,7 @@ security-gate:
 
 ## Install ClamAV antivirus scanner
 .PHONY: install-clamav
-install-clamav:
+install-clamav: require-network
 	@if ! command -v clamscan >/dev/null 2>&1; then \
 		echo "Installing ClamAV..."; \
 		if [ "$$(uname)" = "Darwin" ]; then \
