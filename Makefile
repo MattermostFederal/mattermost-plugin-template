@@ -55,7 +55,11 @@ ifneq ($(OFFLINE),)
     # a missing dependency fails loudly here rather than silently reaching out.
     # A -mod= the caller supplied is dropped rather than prepended to, because Go
     # honours the last occurrence in GOFLAGS - so -mod=mod would otherwise win.
-    override GOFLAGS := -mod=vendor $(filter-out -mod=%,$(GOFLAGS))
+    # Both spellings have to go: Go's flag parser treats --mod=mod exactly like
+    # -mod=mod, so filtering only the single-dash form leaves the hole open. The
+    # space-separated form needs no handling - Go rejects it outright with
+    # `parsing $GOFLAGS: non-flag "vendor"`, which fails closed.
+    override GOFLAGS := -mod=vendor $(filter-out -mod=% --mod=%,$(GOFLAGS))
     override GOPROXY := off
     # Never download a Go toolchain: go.mod names a specific version, and the
     # default GOTOOLCHAIN=auto would fetch it from the module proxy. The enclave
