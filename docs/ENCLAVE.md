@@ -159,7 +159,10 @@ verified modules every time, and the resulting bundle can be checksummed and
 signed (`make release-checksum`, `make release-sign`).
 
 The practical consequence: **a bare `git clone` cannot build offline** — you need
-the bundle. In an enclave that can reach your git host, this is moot.
+the bundle. Reaching your git host does not change that: `/vendor/` and
+`build/enclave/` are both gitignored, so a clone carries neither the Go modules
+nor the npm cache an offline build resolves against. The enclave has to receive
+the bundle — or the same staged artifacts — from an approved artifact source.
 
 There is nothing to keep in sync. `make enclave-stage` always regenerates from
 whatever `go.mod` and `package-lock.json` currently say, so a bundle is

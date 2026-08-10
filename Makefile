@@ -38,18 +38,29 @@ ifeq ($(origin OFFLINE), undefined)
     OFFLINE := $(if $(wildcard $(ENCLAVE_DIR)/OFFLINE),1,)
 endif
 ifeq ($(OFFLINE),0)
-    OFFLINE :=
+    # `override`, because OFFLINE=0 is only ever given on the command line - and
+    # a plain assignment there would lose to it, leaving OFFLINE set to the
+    # non-empty string "0" and every check below reading that as "yes, offline".
+    # The escape hatch require-network points at has to actually work.
+    override OFFLINE :=
 endif
 
 ifneq ($(OFFLINE),)
+    # Every assignment in this branch is an `override`. A plain assignment loses
+    # to a value given on the command line, so `make OFFLINE=1 GOPROXY=https://…`
+    # would quietly put the network back into a build whose entire purpose is to
+    # prove it needs none. Offline mode is a guarantee, not a default.
+    #
     # Resolve Go packages from vendor/ only, and refuse module fetches outright so
     # a missing dependency fails loudly here rather than silently reaching out.
-    GOFLAGS := -mod=vendor $(GOFLAGS)
-    GOPROXY := off
+    # A -mod= the caller supplied is dropped rather than prepended to, because Go
+    # honours the last occurrence in GOFLAGS - so -mod=mod would otherwise win.
+    override GOFLAGS := -mod=vendor $(filter-out -mod=%,$(GOFLAGS))
+    override GOPROXY := off
     # Never download a Go toolchain: go.mod names a specific version, and the
     # default GOTOOLCHAIN=auto would fetch it from the module proxy. The enclave
     # must provide it; `make enclave-preflight` checks that it does.
-    GOTOOLCHAIN := local
+    override GOTOOLCHAIN := local
     export GOFLAGS GOPROXY GOTOOLCHAIN
     # --ignore-scripts is required, not just tidiness: webapp's postinstall runs
     # `playwright install chromium`, which fetches ~400MB of browsers from the
@@ -60,7 +71,7 @@ ifneq ($(OFFLINE),)
     # are never needed to build the plugin. The only other install scripts in the
     # tree are core-js's funding banner and the optional, test-only
     # @parcel/watcher and fsevents, none of which the webpack build uses.
-    NPM_INSTALL_ARGS := ci --offline --ignore-scripts --cache $(NPM_CACHE_DIR) --no-audit --no-fund
+    override NPM_INSTALL_ARGS := ci --offline --ignore-scripts --cache $(NPM_CACHE_DIR) --no-audit --no-fund
 else
     # Go switches to vendor mode automatically whenever a vendor/ directory is
     # present. Pin -mod=mod so that a vendor/ left behind by an earlier staging
@@ -442,9 +453,25 @@ install-go-tools: require-network
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 	$(GO) install gotest.tools/gotestsum@v1.13.0
 
+# check-style, test and test-ci each split in two. Make is free to build a
+# target's prerequisites in any order, and to build them concurrently under -j,
+# so listing require-network alongside apply and webapp/node_modules does not
+# stop those from running first: an offline `make -j test` got as far as syncing
+# the plugin and running npm ci before the guard fired. Checking the guard in
+# one rule and re-entering make for the real work is what actually orders them,
+# serially and in parallel alike.
+#
+# The wrapper keeps the documented target name; the -impl half carries the real
+# prerequisites and recipe.
+
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: manifest-check apply webapp/node_modules install-go-tools
+check-style: require-network
+	@$(MAKE) --no-print-directory check-style-impl
+
+## Internal: the check-style work proper, sequenced behind the offline guard.
+.PHONY: check-style-impl
+check-style-impl: manifest-check apply webapp/node_modules install-go-tools
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -463,7 +490,12 @@ endif
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules install-go-tools
+test: require-network
+	@$(MAKE) --no-print-directory test-impl
+
+## Internal: the test work proper, sequenced behind the offline guard.
+.PHONY: test-impl
+test-impl: apply webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v ./...
 endif
@@ -473,7 +505,12 @@ endif
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist, optimized for a CI environment.
 .PHONY: test-ci
-test-ci: apply webapp/node_modules install-go-tools
+test-ci: require-network
+	@$(MAKE) --no-print-directory test-ci-impl
+
+## Internal: the test-ci work proper, sequenced behind the offline guard.
+.PHONY: test-ci-impl
+test-ci-impl: apply webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum --format standard-verbose --junitfile report.xml -- ./...
 endif
