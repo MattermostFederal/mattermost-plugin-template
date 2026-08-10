@@ -20,6 +20,9 @@ MM_DEBUG ?=
 
 ENCLAVE_DIR ?= $(CURDIR)/build/enclave
 NPM_CACHE_DIR ?= $(ENCLAVE_DIR)/npm-cache
+# sha256 of the webapp/package-lock.json the cache above was populated from, so
+# enclave-preflight can tell a usable cache from a stale one.
+NPM_CACHE_LOCK_STAMP ?= $(ENCLAVE_DIR)/package-lock.sha256
 
 # npm resolves some transitive dependencies (lightningcss, @parcel/watcher) to
 # prebuilt, platform-specific binaries. Stage every platform the enclave might
@@ -361,10 +364,17 @@ enclave-preflight:
 			echo "  OK    node $$(node --version)"; \
 		fi; \
 	fi; \
-	if [ -d "$(NPM_CACHE_DIR)" ]; then \
-		echo "  OK    npm cache staged at $(NPM_CACHE_DIR)"; \
-	else \
+	if [ ! -d "$(NPM_CACHE_DIR)" ]; then \
 		echo "  FAIL  no npm cache at $(NPM_CACHE_DIR); run 'make enclave-stage' on a networked machine"; failed=1; \
+	elif [ ! -f "$(NPM_CACHE_LOCK_STAMP)" ]; then \
+		echo "  FAIL  npm cache has no stage stamp; it predates this check."; \
+		echo "        Re-run 'make enclave-stage' on a networked machine."; failed=1; \
+	elif [ "$$(cat $(NPM_CACHE_LOCK_STAMP))" != "$$(shasum -a 256 webapp/package-lock.json | cut -d' ' -f1)" ]; then \
+		echo "  FAIL  npm cache was staged for a different webapp/package-lock.json."; \
+		echo "        Dependencies have changed since; the offline build would fail with"; \
+		echo "        ENOTCACHED on whichever package moved. Re-run 'make enclave-stage'."; failed=1; \
+	else \
+		echo "  OK    npm cache staged at $(NPM_CACHE_DIR), matches webapp/package-lock.json"; \
 	fi; \
 	if [ -n "$(OFFLINE)" ]; then \
 		echo "  OK    offline mode active (GOFLAGS=-mod=vendor GOPROXY=off GOTOOLCHAIN=local)"; \
@@ -405,6 +415,12 @@ enclave-stage:
 			--ignore-scripts --no-audit --no-fund >/dev/null ); \
 	done
 	@rm -rf $(ENCLAVE_STAGE_TMP)
+	@# Record which lock file this cache was populated from. A cache staged for
+	@# an older package-lock.json looks perfectly healthy - the directory is
+	@# there, full of tarballs - and then fails the offline build with
+	@# ENOTCACHED on whichever dependency moved. enclave-preflight compares this
+	@# so that gets caught before a bundle is carried into the enclave.
+	@shasum -a 256 webapp/package-lock.json | cut -d' ' -f1 > $(NPM_CACHE_LOCK_STAMP)
 	@echo ""
 	@echo "Staged: vendor/ ($$(du -sh vendor | cut -f1)), $(NPM_CACHE_DIR) ($$(du -sh $(NPM_CACHE_DIR) | cut -f1))"
 	@echo "Verify with: make OFFLINE=1 clean dist"

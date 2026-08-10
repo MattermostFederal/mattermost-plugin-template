@@ -168,6 +168,13 @@ There is nothing to keep in sync. `make enclave-stage` always regenerates from
 whatever `go.mod` and `package-lock.json` currently say, so a bundle is
 consistent by construction. Just re-run it after a dependency change.
 
+Forget to, and `make enclave-preflight` says so. It records the hash of the
+`package-lock.json` each cache was staged from and compares it, because a stale
+cache is otherwise indistinguishable from a good one — the directory is there,
+full of tarballs — right up until the offline build dies with `ENOTCACHED` on
+whichever dependency moved. Better to learn that on the staging machine than
+after carrying a bundle into the enclave.
+
 ## Verifying a build really is hermetic
 
 `GOPROXY=off` and `npm ci --offline` make network access an error rather than a
