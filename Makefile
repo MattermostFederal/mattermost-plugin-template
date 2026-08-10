@@ -93,6 +93,21 @@ endif
 GOPATH ?= $(shell go env GOPATH)
 GO_TEST_FLAGS ?= -race
 GO_BUILD_FLAGS ?=
+
+ifneq ($(OFFLINE),)
+    # These two are interpolated straight onto the `go build` / `go test`
+    # command line, where a flag beats GOFLAGS - so -mod=mod here selects the
+    # module cache over the staged vendor/ tree just as effectively as setting
+    # GOFLAGS would, and sails past the filtering done up there. Same two
+    # spellings, same reason.
+    #
+    # GO_TEST_FLAGS is included even though `make test` refuses to run offline:
+    # coverage-backend uses it and is not behind require-network, so the hole is
+    # narrower but real.
+    override GO_BUILD_FLAGS := $(filter-out -mod=% --mod=%,$(GO_BUILD_FLAGS))
+    override GO_TEST_FLAGS := $(filter-out -mod=% --mod=%,$(GO_TEST_FLAGS))
+endif
+
 DEFAULT_GOOS := $(shell go env GOOS)
 DEFAULT_GOARCH := $(shell go env GOARCH)
 
