@@ -27,6 +27,20 @@ make deploy
 - `make check-style` - lint Go and webapp code
 - `make test` - run tests
 - `make deploy` - deploy to the Mattermost server specified by `MM_SERVICESETTINGS_SITEURL` and `MM_ADMIN_TOKEN`
+- `make enclave-bundle` - pack a self-contained tarball for air-gapped builds
+
+## Air-gapped (enclave) builds
+
+The plugin builds with no network access. On a networked machine run
+`make enclave-bundle` to produce a self-contained tarball; inside the enclave,
+extract it and run `make dist`. Go modules are vendored and npm packages ship as
+a pre-populated cache — both generated at staging time, so plugins that never
+target an enclave carry nothing extra.
+
+Prove any build is network-free with `make OFFLINE=1 dist`.
+
+See **[docs/ENCLAVE.md](docs/ENCLAVE.md)** for prerequisites, the staging
+workflow, and troubleshooting.
 
 ## Automation
 

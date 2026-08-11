@@ -26,6 +26,27 @@ This is a minimal Mattermost plugin template. The server is written in Go and th
 - `make test` - run tests
 - `make deploy` - build and deploy to a running Mattermost server
 
+## Air-gapped (enclave) builds
+
+`make dist` is able to run with **no network access**. See
+[`docs/ENCLAVE.md`](docs/ENCLAVE.md) for the full workflow; the essentials:
+
+- `make enclave-bundle` (networked machine) produces a self-contained tarball;
+  inside the enclave, `make dist` builds from it. `make enclave-preflight`
+  checks the enclave has a new enough Go and Node.
+- `vendor/` and `build/enclave/` are **generated artifacts and gitignored** —
+  `make enclave-stage` produces them and the tarball carries them. Don't commit
+  either: plugins that never target an enclave should carry no cost, and there
+  is no vendor tree to drift from `go.mod`.
+- Offline mode auto-enables inside a shipped bundle, or explicitly via
+  `make OFFLINE=1 dist` — useful to prove a change didn't introduce a fetch. It
+  sets `GOFLAGS=-mod=vendor GOPROXY=off GOTOOLCHAIN=local` and installs npm
+  packages from a staged cache with `--offline --ignore-scripts`.
+- Only the **plugin build** is supported offline. Lint, test and security
+  targets download tooling and deliberately fail fast in offline mode.
+- Don't add a webapp `postinstall` step that downloads anything, and prefer Go
+  dependencies that vendor cleanly — both break the enclave build.
+
 ## Commits and releases
 
 This repo automates releases with **release-please** driven by

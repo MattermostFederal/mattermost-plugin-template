@@ -31,6 +31,13 @@ docker/mattermost/
 build/codeql/
 build/codeql-db/
 
+# Enclave staging artifacts, produced by `make enclave-stage` and shipped in the
+# `make enclave-bundle` tarball rather than committed. vendor/ is generated the
+# same way: keeping it out of the repo means plugins that never build for an
+# enclave carry no cost, and there is no vendor tree to drift from go.mod.
+build/enclave/
+/vendor/
+
 # Spurious go.sum created by CodeQL in server directory
 server/go.sum
 
