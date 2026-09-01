@@ -11,8 +11,8 @@
 # a green release build.
 #
 # Build gates:
-#   - Grype:  --fail-on high blocks HIGH/CRITICAL CVEs (see .grype.yaml
-#             for any documented, time-boxed exceptions)
+#   - Grype:  findings uploaded to Code Scanning (SARIF) but do NOT block
+#             the PR — avoids dependabot deadlock on unfixable indirect deps
 #   - CodeQL: `make security-gate` fails on error-level SARIF findings
 #   - SARIF upload to Code Scanning: required, no bypass
 #
@@ -79,15 +79,16 @@ jobs:
           retention-days: 30
 
       # Scan each SBOM with Grype and emit SARIF for Code Scanning.
-      # fail-build: true reproduces `make sbom-scan`'s --fail-on high
-      # gate. Separate categories keep server vs webapp findings distinct
-      # in the Security tab.
+      # fail-build: false — findings surface in the Security tab via SARIF
+      # upload but do not block the PR. This avoids dependabot PRs being
+      # deadlocked by CVEs in indirect deps they can't directly fix.
+      # Separate categories keep server vs webapp findings distinct.
       - name: Scan Go SBOM (Grype -> SARIF)
         id: grype-server
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: dist/sbom/server-sbom.json
-          fail-build: true
+          fail-build: false
           severity-cutoff: high
           output-format: sarif
 
@@ -119,7 +120,7 @@ jobs:
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: dist/sbom/webapp-sbom.json
-          fail-build: true
+          fail-build: false
           severity-cutoff: high
           output-format: sarif
 
