@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.1.3...v0.2.0) (2026-09-02)
+
+
+### Features
+
+* build the plugin offline in an air-gapped enclave ([536edb9](https://github.com/MattermostFederal/mattermost-plugin-template/commit/536edb9f29b0791f574fdb8728130315a1b3561c))
+* build the plugin offline in an air-gapped enclave ([f68fc4b](https://github.com/MattermostFederal/mattermost-plugin-template/commit/f68fc4b00ab8dc3e783a1433fd7b6c4558af8052))
+
+
+### Bug Fixes
+
+* catch a stale npm cache in preflight, not at build time ([50792cf](https://github.com/MattermostFederal/mattermost-plugin-template/commit/50792cfe445ce109bf500175c43b3810ef785cc0))
+* **ci:** least-privilege secrets + correct SARIF ref on release call ([7fa9d3f](https://github.com/MattermostFederal/mattermost-plugin-template/commit/7fa9d3f19eece515a82102773b5d55b418703145))
+* **ci:** publish release assets via reusable workflow ([6a594d3](https://github.com/MattermostFederal/mattermost-plugin-template/commit/6a594d39cd51b23fc166f7ac5c954b7e755826fa))
+* **ci:** publish release assets via reusable workflow ([f9fb57e](https://github.com/MattermostFederal/mattermost-plugin-template/commit/f9fb57eec631aebcccbdb92b65dee224dbfc6b4e))
+* **ci:** set Grype fail-build to false to unblock dependabot PRs ([52ff964](https://github.com/MattermostFederal/mattermost-plugin-template/commit/52ff9645b6e38b1953ec5b5f117d2784a8748cd5))
+* **ci:** set Grype fail-build to false to unblock dependabot PRs ([02465c3](https://github.com/MattermostFederal/mattermost-plugin-template/commit/02465c33c4518c28763d601aaee1f3ad8920289a))
+* **deps:** bump Go to 1.26.7 and mattermost/server/public to v0.4.4 ([c2ef8a2](https://github.com/MattermostFederal/mattermost-plugin-template/commit/c2ef8a2712cd3405adf54bad8541bf84ed87bb3d))
+* make offline mode hold against the command line, and fail fast ([355670f](https://github.com/MattermostFederal/mattermost-plugin-template/commit/355670f9d6218b616187673e57d02a3b4b3fa542))
+* pin Node 22 in .nvmrc to match CI and dependency engines ([11a182b](https://github.com/MattermostFederal/mattermost-plugin-template/commit/11a182b4516ad6d6bf7b8ef1902b5c712bdc7f2d))
+* pin Node 22 in .nvmrc to match CI and dependency engines ([0edb1b6](https://github.com/MattermostFederal/mattermost-plugin-template/commit/0edb1b60a550f6d069202eb011ff8dafecd526aa))
+* strip --mod as well as -mod from offline GOFLAGS ([10c502c](https://github.com/MattermostFederal/mattermost-plugin-template/commit/10c502c1651b5f9d68031bdd9963f0747974828a))
+* strip -mod from GO_BUILD_FLAGS and GO_TEST_FLAGS when offline ([444fbb4](https://github.com/MattermostFederal/mattermost-plugin-template/commit/444fbb45ae239b4d36dc023fc1cccc3d93cdc055))
+
+
+### Dependencies
+
+* **actions:** bump github/codeql-action/upload-sarif ([05633d7](https://github.com/MattermostFederal/mattermost-plugin-template/commit/05633d724696ddc9a0e110916e041c25184b588a))
+* **actions:** bump the actions-minor-patch group across 1 directory with 2 updates ([a12b6e3](https://github.com/MattermostFederal/mattermost-plugin-template/commit/a12b6e3ab6feeced14c24a8e64491fa3671adeee))
+* **webapp:** bump the npm-minor-patch group across 1 directory with 8 updates ([8e10415](https://github.com/MattermostFederal/mattermost-plugin-template/commit/8e1041580f25610f7a0e7d13b720b9e06893ded9))
+* **webapp:** bump the npm-minor-patch group in /webapp with 3 updates ([d71269f](https://github.com/MattermostFederal/mattermost-plugin-template/commit/d71269f498f4220fbcb2c32dbf3dbffc67aa03e0))
+
 ## [0.1.3](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.1.2...v0.1.3) (2026-08-03)
 
 
