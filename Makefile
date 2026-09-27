@@ -563,7 +563,7 @@ endif
 
 ## Prints frontend code coverage summary to terminal.
 .PHONY: coverage-frontend
-coverage-frontend: webapp/node_modules
+coverage-frontend: apply webapp/node_modules
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test:coverage
 	cd webapp && $(NPM) run test:pw-ct-coverage
@@ -602,7 +602,8 @@ nuke: docker-kill-orphans
 	@rm -fr dist/
 	@rm -fr server/coverage.txt server/dist
 	@rm -fr webapp/junit.xml webapp/dist webapp/node_modules
-	@rm -fr webapp/coverage webapp/coverage-ct webapp/.v8-ct-coverage
+	@rm -fr webapp/coverage webapp/coverage-ct webapp/coverage-merged
+	@rm -fr webapp/.v8-unit-coverage webapp/.v8-ct-coverage webapp/.v8-merged-coverage
 	@rm -fr build/bin/
 	@echo "Everything removed. Run 'make docker-setup' to start fresh."
 

@@ -1,6 +1,7 @@
 ---
 name: add-frontend-tests
 description: Systematically find frontend test coverage gaps and add exhaustive Playwright unit and component tests. Use when you want to improve React/TypeScript test coverage, add missing tests, or harden existing test suites.
+user-invocable: true
 ---
 
 # Add Frontend Tests
@@ -31,7 +32,9 @@ Typical commands this runs:
 - `npm run test:pw-ct-coverage`: component tests (`.pw.tsx`) with V8 browser coverage
 - `npm run test:coverage-merged`: combines both into a single authoritative report
 
-**CI environment warning.** Component test coverage collection may be skipped when `CI=true`. If you see the merged report showing very low coverage, check whether CT coverage was actually collected. If it was skipped, warn the user that the merged numbers only reflect unit test coverage.
+In this repo the scripts are defined in `webapp/package.json`, all three use `webapp/c8.json`, and every non-test file under `webapp/src/` is reported (a file no test loads shows as 0%, not missing). Component tests must import `{test, expect}` from `playwright/ct-coverage`; eslint enforces it, because a `.pw.tsx` importing from `@playwright/experimental-ct-react` passes while contributing no coverage.
+
+**CI environment warning.** Component test coverage collection may be skipped when `CI` is set (check the component-test coverage fixture, typically under `webapp/playwright/`). Measure locally with `CI` unset. If you see the merged report showing very low coverage, check whether CT coverage was actually collected. If it was skipped, warn the user that the merged numbers only reflect unit test coverage.
 
 ### Coverage Threshold Check
 
@@ -92,7 +95,7 @@ Projects typically use two distinct test approaches:
 
 **Component Tests (`.pw.tsx`)**, run in browser via Playwright Component Testing:
 - For React components with real DOM rendering
-- File pattern: `src/components/<Component>.pw.tsx`
+- File pattern: beside the component, `src/<area>/<Component>.pw.tsx`
 - Run: `npm run test:pw-ct`
 
 ### Test Infrastructure
@@ -106,9 +109,9 @@ test.beforeEach(() => {
 });
 ```
 
-If a store lacks a `_resetForTesting()` export, add one. Each store should clear its module-level state and listener arrays.
+If a store lacks a reset export, add one. Follow the name the project already uses (`_resetForTesting`, or a more specific `_reset<Thing>ForTesting` where one module holds several caches). Each should clear its module-level state and listener arrays.
 
-**Route mocking for API calls:**
+**Route mocking for API calls.** Look at the `page.route(...)` patterns existing tests use first: static assets such as map tiles, fonts and workers usually need mocking as well as the API, and a component that fetches one hangs without it.
 ```typescript
 await page.route('**/plugins/<plugin-id>/api/**', (route) => {
     route.fulfill({
@@ -228,7 +231,7 @@ For utility modules:
 
 Add tests to existing test files or create new ones following the pattern:
 - Unit tests: `src/foo.ts` to `src/foo.spec.ts`
-- Component tests: `src/components/Foo.tsx` to `src/components/Foo.pw.tsx`
+- Component tests: `src/<area>/Foo.tsx` to `src/<area>/Foo.pw.tsx`, in the same directory as the component
 
 ## Step 4: Implement in Phases (after plan approval)
 

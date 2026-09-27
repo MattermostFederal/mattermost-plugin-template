@@ -6,7 +6,7 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 export default [
     {
-        ignores: ['node_modules/**', 'dist/**', 'playwright/**', 'coverage/**', 'coverage-ct/**', 'src/manifest.ts'],
+        ignores: ['node_modules/**', 'dist/**', 'playwright/**', 'coverage/**', 'coverage-ct/**', 'coverage-merged/**', 'src/manifest.ts'],
     },
     {
         files: ['**/*.{js,jsx,ts,tsx}'],
@@ -377,6 +377,24 @@ export default [
             'max-lines': 'off',
             'react/prop-types': 'off',
             'react/require-optimization': 'off',
+        },
+    },
+
+    {
+        files: ['**/*.pw.tsx'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '@playwright/experimental-ct-react',
+                            importNames: ['test', 'expect'],
+                            message: "Import {test, expect} from 'playwright/ct-coverage' instead, or the file contributes no coverage.",
+                        },
+                    ],
+                },
+            ],
         },
     },
 

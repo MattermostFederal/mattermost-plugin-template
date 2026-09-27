@@ -8,7 +8,7 @@ A minimal Mattermost plugin template with both server (Go) and webapp (TypeScrip
 - **Webapp**: A minimal React plugin registering a channel header button that pops a greeting.
 - **Build tooling**: Makefile, mattermost-plugin-starter-template build scripts, CI workflows.
 - **CI/CD automation**: PR validation, security scanning (SBOM + Grype + CodeQL), automated releases via [release-please](https://github.com/googleapis/release-please), and Dependabot updates. See [Automation](#automation) below.
-- **Editor integration**: `.claude/` (Claude Code agents, commands, skills) and `.vscode/` settings.
+- **Editor integration**: `.claude/` (Claude Code settings and skills) and `.vscode/` settings.
 
 ## Getting started
 
