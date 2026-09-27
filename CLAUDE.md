@@ -24,7 +24,10 @@ This is a minimal Mattermost plugin template. The server is written in Go and th
 - `make dist` - build the plugin bundle
 - `make check-style` - lint both Go and webapp code
 - `make test` - run tests
+- `make coverage` - Go and webapp coverage (`coverage-backend`, `coverage-frontend`)
 - `make deploy` - build and deploy to a running Mattermost server
+
+Webapp coverage uses c8 over V8 data. Unit tests (`*.spec.ts`) run under c8 in Node; component tests (`*.pw.tsx`) run in Chromium, so `webapp/playwright/ct-coverage.ts` collects coverage through CDP and must be where they import `test` and `expect` from (eslint enforces it). Collection is skipped when `CI` is set, since it roughly doubles the run, so read coverage numbers from a local run. The fixture must keep every entry in a source map's `sources`: mappings index into that array, and dropping entries makes c8 silently report nothing.
 
 ## Air-gapped (enclave) builds
 

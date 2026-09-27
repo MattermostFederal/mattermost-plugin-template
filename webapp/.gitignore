@@ -3,3 +3,9 @@ junit.xml
 node_modules
 playwright/.cache
 test-results
+coverage/
+coverage-ct/
+coverage-merged/
+.v8-unit-coverage/
+.v8-ct-coverage/
+.v8-merged-coverage/
