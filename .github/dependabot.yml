@@ -98,6 +98,22 @@ updates:
       - dependency-name: typescript
         update-types:
           - version-update:semver-major
+      # @playwright/test and @playwright/experimental-ct-react each bundle
+      # their own playwright, so the two have to move together. When the
+      # versions differ, the test runner loads two copies and fails with
+      # "Playwright Test did not expect test() to be called here". That is
+      # what broke PR #52: dependabot bumped @playwright/test to 1.64.0 while
+      # the component-test package had published nothing past 1.62.1. Patch
+      # updates within a shared minor still flow. Bump the pair together in
+      # a deliberate commit once both publish the same stable version.
+      - dependency-name: "@playwright/test"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "@playwright/experimental-ct-react"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   # GitHub Actions used by .github/workflows/*.yml. We pin every action
   # to a full commit SHA (supply-chain hardening — a moved tag can't
