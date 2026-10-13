@@ -1,7 +1,7 @@
 {
     "id": "com.mattermost.plugin-template",
     "name": "Plugin Template",
-    "version": "0.1.3",
+    "version": "0.2.0",
     "description": "A minimal Mattermost plugin template.",
     "homepage_url": "https://github.com/MattermostFederal/mattermost-plugin-template",
     "support_url": "https://github.com/MattermostFederal/mattermost-plugin-template/issues",
