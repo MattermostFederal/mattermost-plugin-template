@@ -775,12 +775,12 @@ install-sbom-tools: require-network
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
 install-grype: require-network
-	@if [ ! -x "$(GOBIN)/grype" ]; then \
-		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
+	@if [ "$$($(GO) version -m $(GOBIN)/grype 2>/dev/null | awk '$$1=="mod"{print $$3}')" != "$(GRYPE_VERSION)" ]; then \
+		echo "Installing Grype $(GRYPE_VERSION) via go install (cross-platform, no anchore install.sh)..."; \
 		mkdir -p $(GOBIN); \
 		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@$(GRYPE_VERSION); \
 	else \
-		echo "Grype already installed"; \
+		echo "Grype $(GRYPE_VERSION) already installed"; \
 	fi
 
 ## Generate Software Bill of Materials (SBOM) in CycloneDX JSON format
