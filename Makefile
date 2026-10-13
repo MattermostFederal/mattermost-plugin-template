@@ -482,10 +482,28 @@ ifneq ($(OFFLINE),)
 	@exit 1
 endif
 
+# golangci-lint ships a prebuilt binary per release, built with a Go new enough
+# for go.mod; go install would build it with whatever Go is local instead.
+GOLANGCI_LINT_VERSION ?= 2.14.0
+
 ## Install go tools
 install-go-tools: require-network
 	@echo Installing go tools
-	GOTOOLCHAIN=$$($(GO) env GOVERSION) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+	@if [ "$$($(GOBIN)/golangci-lint version --short 2>/dev/null)" != "$(GOLANGCI_LINT_VERSION)" ]; then \
+		set -e; \
+		name=golangci-lint-$(GOLANGCI_LINT_VERSION)-$$($(GO) env GOOS)-$$($(GO) env GOARCH); \
+		url=https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_LINT_VERSION); \
+		tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+		echo "Downloading $$name.tar.gz"; \
+		curl -sSfL -o "$$tmp/$$name.tar.gz" "$$url/$$name.tar.gz"; \
+		curl -sSfL -o "$$tmp/checksums.txt" "$$url/golangci-lint-$(GOLANGCI_LINT_VERSION)-checksums.txt"; \
+		(cd "$$tmp" && grep " $$name.tar.gz\$$" checksums.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }); \
+		tar -xzf "$$tmp/$$name.tar.gz" -C "$$tmp"; \
+		mkdir -p $(GOBIN); \
+		install -m 0755 "$$tmp/$$name/golangci-lint" $(GOBIN)/golangci-lint; \
+	else \
+		echo "golangci-lint $(GOLANGCI_LINT_VERSION) already installed"; \
+	fi
 	GOTOOLCHAIN=$$($(GO) env GOVERSION) $(GO) install gotest.tools/gotestsum@v1.13.0
 
 # check-style, test and test-ci each split in two. Make is free to build a
