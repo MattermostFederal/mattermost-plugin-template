@@ -54,7 +54,8 @@ scanning, and dependency updates for free.
 | `pr.yml` | PRs to `main` | Style checks, tests, and a bundle build |
 | `security.yml` | PRs, push to `main`, weekly | SBOM + Grype CVE scan and CodeQL (Go + JS/TS), uploaded to Code Scanning |
 | `release-please.yml` | push to `main` | Maintains the Release PR (version bump + changelog) |
-| `release.yml` | `v*` tag | Full security-gated `make release` + publishes the GitHub Release |
+| `release.yml` | `v*` tag | Full security-gated `make release`, then signs and publishes the GitHub Release from the `release` environment |
+| `preview.yml` | `preview` label on a PR | Deploys the PR's bundle to a throwaway preview server (see [docs/RELEASING.md](docs/RELEASING.md#pr-preview-environments)) |
 
 ### Releasing
 
