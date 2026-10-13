@@ -200,10 +200,14 @@ jobs:
             export GNUPGHOME
             printf '%s\n' "$PLUGIN_SIGNING_KEY" | gpg --batch --import
             key_id="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')"
+            if [ -z "$key_id" ]; then
+              echo "::error::PLUGIN_SIGNING_KEY contains no usable secret key."
+              exit 1
+            fi
           fi
           cd dist
           for bundle in $BUNDLES; do
-            [ -f "$bundle" ] || continue
+            [ -f "$bundle" ] || { echo "::error::Missing release bundle: $bundle"; exit 1; }
             if [ -n "$key_id" ]; then
               printf '%s' "$PLUGIN_SIGNING_KEY_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
                 -u "$key_id" --personal-digest-preferences SHA256 --detach-sign "$bundle"
