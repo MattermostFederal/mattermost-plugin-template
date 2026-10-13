@@ -761,21 +761,26 @@ deploy-local: dist
 # SBOM & Vulnerability Scanning
 # ====================================================================================
 
+# Pinned rather than @latest: a new release can require a newer Go than the
+# one go.mod pins, and GOTOOLCHAIN=local then fails the install mid-release.
+CYCLONEDX_GOMOD_VERSION ?= v1.12.0
+GRYPE_VERSION ?= v0.119.0
+
 ## Install SBOM generation tools
 .PHONY: install-sbom-tools
 install-sbom-tools: require-network
 	@echo "Installing SBOM generation tools..."
-	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@$(CYCLONEDX_GOMOD_VERSION)
 
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
 install-grype: require-network
-	@if [ ! -x "$(GOBIN)/grype" ]; then \
-		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
+	@if [ "$$($(GO) version -m $(GOBIN)/grype 2>/dev/null | awk '$$1=="mod"{print $$3}')" != "$(GRYPE_VERSION)" ]; then \
+		echo "Installing Grype $(GRYPE_VERSION) via go install (cross-platform, no anchore install.sh)..."; \
 		mkdir -p $(GOBIN); \
-		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@latest; \
+		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@$(GRYPE_VERSION); \
 	else \
-		echo "Grype already installed"; \
+		echo "Grype $(GRYPE_VERSION) already installed"; \
 	fi
 
 ## Generate Software Bill of Materials (SBOM) in CycloneDX JSON format
