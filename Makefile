@@ -820,7 +820,7 @@ sbom-audit: sbom sbom-scan
 # CodeQL Security Analysis
 # ====================================================================================
 
-CODEQL_VERSION ?= 2.20.1
+CODEQL_VERSION ?= 2.27.2
 CODEQL_DIR := $(PWD)/build/codeql
 CODEQL := $(CODEQL_DIR)/codeql/codeql
 CODEQL_DB_DIR := $(PWD)/build/codeql-db

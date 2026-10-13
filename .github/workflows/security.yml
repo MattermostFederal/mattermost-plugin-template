@@ -178,7 +178,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/codeql
-          key: codeql-cli-${{ runner.os }}-2.20.1
+          key: codeql-cli-${{ runner.os }}-2.27.2
 
       # Runs codeql-go + codeql-js, writing dist/codeql-go.sarif and
       # dist/codeql-js.sarif — the exact files `make security-gate` and
