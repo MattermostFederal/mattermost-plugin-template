@@ -70,7 +70,9 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
 ## CI and security
 
 Workflows live in `.github/workflows/`: `pr.yml` (style/test/build), `security.yml`
-(SBOM + Grype + CodeQL → Code Scanning), `release-please.yml`, and `release.yml`.
+(SBOM + Grype + CodeQL → Code Scanning), `release-please.yml`, `release.yml`, and
+`preview.yml` (the `preview` PR label deploys `pr.yml`'s `plugin-dist` artifact to a
+throwaway server; keep that artifact a single `dist/*.tar.gz`).
 Everything is reproducible locally through `make` — CI runs the same targets, so
 verify changes with these before pushing:
 

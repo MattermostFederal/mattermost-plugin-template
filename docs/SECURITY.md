@@ -105,8 +105,11 @@ secrets (**Settings → Secrets and variables → Actions**):
 - `PLUGIN_SIGNING_KEY` — ASCII-armored private GPG key
 - `PLUGIN_SIGNING_KEY_PASSPHRASE` — its passphrase
 
-`release.yml` imports the key and `make release-sign` produces a detached
-`.sig` attached to the GitHub Release. Consumers verify with:
+Only `release.yml`'s `publish` job sees the key. It runs in the `release`
+environment, runs no repository code, and signs the bundle the `build` job
+produced; the `build` job runs `make release` without a key. Move the two
+secrets into the `release` environment and add required reviewers there to gate
+every release on a human. The detached `.sig` is attached to the GitHub Release. Consumers verify with:
 
 ```sh
 gpg --verify <bundle>.tar.gz.sig <bundle>.tar.gz
