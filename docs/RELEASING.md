@@ -21,9 +21,12 @@ commit to main (feat:/fix:/...) ──► release-please.yml opens/updates a "Re
    `plugin.json`'s `version` and updates `CHANGELOG.md`.
 3. **You merge the Release PR** when you're ready to ship. That creates the
    `v*` git tag.
-4. **`release.yml`** fires on the tag, runs the full security-gated `make
-   release`, and publishes a GitHub Release with the bundle, checksum, SBOMs,
-   CodeQL SARIF, and (if configured) a GPG signature.
+4. **`release.yml`** fires on the tag. Its `build` job refuses a tag that is
+   not on `main`, then runs the full security-gated `make release` with no
+   signing key. Its `publish` job runs in the `release` environment, runs no
+   repository code, signs (if configured) and checksums the bundle, and
+   publishes a GitHub Release with the bundle, checksum, SBOMs, CodeQL SARIF,
+   and signature.
 
 Nothing releases until you merge the Release PR — merging normal PRs to `main`
 only updates the pending release, it doesn't ship.
@@ -38,7 +41,7 @@ The prefix on the commit **subject** drives the version bump:
 | `fix:` | `fix: handle empty webhook payload` | patch (`0.1.0 → 0.1.1`) | Bug Fixes |
 | `perf:` | `perf: cache config lookups` | patch | Performance |
 | `deps:` | `deps(go): bump gorilla/mux` | patch | Dependencies |
-| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | major (`0.x → 1.0.0`) | Features + ⚠ Breaking |
+| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | minor while pre-1.0 (`0.1.0 → 0.2.0`), major after | Features + ⚠ Breaking |
 | `docs:` `chore:` `test:` `refactor:` `style:` `build:` `ci:` | `chore: tidy imports` | none | hidden |
 
 Rules of thumb:
@@ -48,7 +51,9 @@ Rules of thumb:
 - Squash-merging PRs? The **PR title** becomes the commit subject, so title PRs
   with a conventional prefix.
 - Pre-1.0 (`0.x`), breaking changes bump the **minor**, not the major, per
-  semver's initial-development clause.
+  semver's initial-development clause (`bump-minor-pre-major` in
+  `.release-please-config.json`). Cut `1.0.0` deliberately with a
+  `Release-As: 1.0.0` commit footer.
 
 ## Cutting a release (normal path)
 
@@ -94,3 +99,37 @@ The template is seeded at `0.1.0` (`.release-please-manifest.json` and
 Release PR only considers commits after the template was set up, not the whole
 template history. After you rename the plugin, your first `feat:`/`fix:` commits
 will drive the first real Release PR.
+
+## Pre-releases
+
+A tag containing `-rc`, `-beta` or `-alpha` (for example `v0.3.0-rc.1`) is
+published as a GitHub pre-release. The tag must still point at a commit on
+`main`. Push one with the manual fallback above.
+
+## PR preview environments
+
+Adding the `preview` label to a pull request stands up a throwaway Mattermost
+server with that PR's bundle installed and posts its URL on the PR. Removing
+the label or closing the PR tears it down.
+
+`.github/workflows/preview.yml` is a thin copy of the shared workflow in the
+private `MattermostFederal/pr-preview` repo, checked out at its protected `v1`
+tag. It never checks out or runs PR code: it waits for `pr.yml` to pass on the
+PR's head commit and deploys the `plugin-dist` artifact that run uploaded, so
+`pr.yml` must keep uploading exactly one `dist/*.tar.gz` under that name. A
+fork PR deploys only the commit that was labeled; a later push tears the
+preview down and a maintainer re-applies the label.
+
+To enable it in a repo made from this template:
+
+- create the label: `gh label create preview`
+- make sure the org variables `PREVIEW_CHECKOUT_APP_ID` and
+  `PREVIEW_AWS_ROLE_ARN` and the org secrets `PREVIEW_CHECKOUT_APP_PRIVATE_KEY`
+  and `PREVIEW_ADMIN_SECRET` are visible to the repo
+- optionally set `PREVIEW_APP` (hostname prefix, default is the repo name
+  without `mattermost-plugin-`) or `PREVIEW_MM_IMAGE_TAG` in the workflow's
+  `env:` block
+
+The reconcile job runs on every PR event so a preview always converges to the
+PR's state, and it fails without those settings. A repo outside the
+MattermostFederal org should delete `preview.yml`.
