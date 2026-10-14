@@ -17,9 +17,9 @@ commit to main (feat:/fix:/...) ──► release-please.yml opens/updates a "Re
 
 1. **You commit** to `main` (via PRs) using Conventional Commit messages.
 2. **`release-please.yml`** reads the commits since the last tag, works out the
-   next semver bump, and keeps a **Release PR** open. That PR bumps
-   `plugin.json`'s `version` and updates `CHANGELOG.md`.
-3. **You merge the Release PR** when you're ready to ship. That creates the
+   next semver bump, and keeps a **Release PR** open as a draft. That PR
+   bumps `plugin.json`'s `version` and updates `CHANGELOG.md`.
+3. **You mark the Release PR ready and merge it** when you're ready to ship. That creates the
    `v*` git tag.
 4. **`release.yml`** fires on the tag. Its `build` job refuses a tag that is
    not on `main`, then runs the full security-gated `make release` with no
@@ -58,9 +58,9 @@ Rules of thumb:
 ## Cutting a release (normal path)
 
 1. Land your feature/fix PRs to `main` with conventional commit titles.
-2. Find the open **"chore(main): release X.Y.Z"** PR that release-please keeps
-   updated. Review its `CHANGELOG.md` and `plugin.json` diff.
-3. Merge it. The tag and GitHub Release are created automatically.
+2. Find the open **"chore(main): release X.Y.Z"** draft PR that release-please
+   keeps updated. Review its `CHANGELOG.md` and `plugin.json` diff.
+3. Mark it ready for review, then merge it. The tag and GitHub Release are created automatically.
 
 ## Cutting a release (manual fallback)
 
