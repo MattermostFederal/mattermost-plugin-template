@@ -524,7 +524,7 @@ check-style: require-network
 
 ## Internal: the check-style work proper, sequenced behind the offline guard.
 .PHONY: check-style-impl
-check-style-impl: manifest-check apply webapp/node_modules install-go-tools
+check-style-impl: manifest-check preview-check apply webapp/node_modules install-go-tools
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -540,6 +540,17 @@ ifneq ($(HAS_SERVER),)
 	$(GO) vet ./server/...
 	$(GOBIN)/golangci-lint run ./server/...
 endif
+
+## Checks the .preview hook the way a PR preview deploy does: mattermost.env
+## holds only MM_ settings and comments, and deploy.sh parses. A preview reads
+## the hook from the base branch, so a mistake here surfaces only after merge.
+.PHONY: preview-check
+preview-check:
+	@if [ -f .preview/mattermost.env ] && grep -qvE '^(#.*|MM_[A-Z0-9_]+=.*)?$$' .preview/mattermost.env; then \
+		echo ".preview/mattermost.env may hold only MM_ settings and comments"; \
+		exit 1; \
+	fi
+	@if [ -f .preview/deploy.sh ]; then bash -n .preview/deploy.sh; fi
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
@@ -725,6 +736,7 @@ docker-deploy: docker-check dist
 	@$(DOCKER_COMPOSE) cp dist/$(BUNDLE_NAME) mattermost:/tmp/$(BUNDLE_NAME)
 	@$(DOCKER_COMPOSE) exec -T mattermost mmctl --local plugin add /tmp/$(BUNDLE_NAME) --force
 	@$(DOCKER_COMPOSE) exec -T mattermost mmctl --local plugin enable $(PLUGIN_ID)
+	@DOCKER_COMPOSE="$(DOCKER_COMPOSE)" ./build/preview-hook.sh $(PLUGIN_ID) $(PLUGIN_VERSION)
 	@echo "Plugin $(PLUGIN_ID) deployed and enabled"
 
 ## Disable and re-enable plugin in Docker
