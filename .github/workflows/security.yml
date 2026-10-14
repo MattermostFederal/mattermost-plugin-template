@@ -142,6 +142,26 @@ jobs:
           sarif_file: ${{ steps.grype-webapp.outputs.sarif }}
           category: grype-webapp
 
+  govulncheck:
+    name: govulncheck (reachable Go vulnerabilities)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Same gate as `make release`: fails when the server calls into a
+      # function with a known vulnerability, including the Go stdlib.
+      - name: Run govulncheck
+        run: make govulncheck
+
   codeql:
     name: CodeQL static analysis (Go + JS/TS)
     runs-on: ubuntu-latest
