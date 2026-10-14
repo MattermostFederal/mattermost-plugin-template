@@ -72,7 +72,10 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
 Workflows live in `.github/workflows/`: `pr.yml` (style/test/build), `security.yml`
 (SBOM + Grype + CodeQL → Code Scanning), `release-please.yml`, `release.yml`, and
 `preview.yml` (the `preview` PR label deploys `pr.yml`'s `plugin-dist` artifact to a
-throwaway server; keep that artifact a single `dist/*.tar.gz`).
+throwaway server; keep that artifact a single `dist/*.tar.gz`). Server setup beyond the
+bundle goes in `.preview/` (`mattermost.env` for `MM_*` settings, `deploy.sh` run after
+install), which both the preview and `make deploy` apply; previews read it from the base
+branch, so changes reach them only after merge.
 Everything is reproducible locally through `make` — CI runs the same targets, so
 verify changes with these before pushing:
 

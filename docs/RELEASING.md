@@ -127,8 +127,31 @@ To enable it in a repo made from this template:
   `PREVIEW_AWS_ROLE_ARN` and the org secrets `PREVIEW_CHECKOUT_APP_PRIVATE_KEY`
   and `PREVIEW_ADMIN_SECRET` are visible to the repo
 - optionally set `PREVIEW_APP` (hostname prefix, default is the repo name
-  without `mattermost-plugin-`) or `PREVIEW_MM_IMAGE_TAG` in the workflow's
-  `env:` block
+  without `mattermost-plugin-`), `PREVIEW_MM_IMAGE_TAG` or `PREVIEW_PROFILE`
+  (a profile under pr-preview's `instance/profiles/`) in the workflow's `env:`
+  block
+
+### What a preview sets up beyond the bundle
+
+The preview server already matches the local Docker stack: team `test`, an
+`admin` account, local mode, and the same `MM_*` settings as
+`docker-compose.dev.yml`. Anything more the plugin needs (feature flags,
+companion plugins, plugin settings, database tweaks) lives in `.preview/`:
+
+- `mattermost.env`: `MM_*` settings for the Mattermost container. Only `MM_`
+  lines, comments and blank lines are allowed. `docker-compose.dev.yml` loads
+  the same file, so local and preview servers match.
+- `deploy.sh`: sourced after the bundle is installed, with the helpers
+  `compose`, `mmctl`, `mmctl_on` and `wait_for_ping` and with `$id` and
+  `$version` set. The preview's config is fresh every deploy, so keep it
+  idempotent. `make deploy` runs it too, through `build/preview-hook.sh`, so
+  you can try a change locally before it merges.
+
+The workflow reads `.preview/` from the PR's **base** commit, never the head,
+so a change to it reaches previews only after it merges. It must hold only
+regular files and stay under 1 MB, or the preview deploys without it.
+`make check-style` runs `make preview-check`, which applies the same
+`mattermost.env` rule the preview does and syntax-checks `deploy.sh`.
 
 The reconcile job runs on every PR event so a preview always converges to the
 PR's state, and it fails without those settings. A repo outside the

@@ -29,6 +29,9 @@ services:
       - ./docker/mattermost/logs:/mattermost/logs:rw
       - ./docker/mattermost/plugins:/mattermost/plugins:rw
       - ./docker/mattermost/client-plugins:/mattermost/client/plugins:rw
+    env_file:
+      - path: ./.preview/mattermost.env
+        required: false
     environment:
       TZ: UTC
       MM_SQLSETTINGS_DRIVERNAME: postgres
