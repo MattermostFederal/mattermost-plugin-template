@@ -78,6 +78,7 @@ verify changes with these before pushing:
 
 - `make check-style && make test` - what `pr.yml` gates on
 - `make sbom-audit` - dependency CVE scan (fails on HIGH/CRITICAL)
+- `make govulncheck` - reachable Go vulnerability scan (fails on any)
 - `make codeql-analyze && make security-gate` - static analysis + finding gate
 - `make release` - the full security-gated pipeline `release.yml` runs on a tag
 

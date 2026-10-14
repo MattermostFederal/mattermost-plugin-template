@@ -74,6 +74,7 @@ The template ships an SBOM + CVE + static-analysis pipeline (CycloneDX, Grype,
 CodeQL, ClamAV, optional GPG signing), all reproducible locally via `make`:
 
 - `make sbom-audit` - generate SBOMs and fail on HIGH/CRITICAL CVEs
+- `make govulncheck` - fail on Go vulnerabilities the server code reaches
 - `make codeql-analyze && make security-gate` - static analysis + finding gate
 - `make release` - the full security-gated pipeline CI runs on a tag
 

@@ -226,9 +226,9 @@ release-tag:
 	git tag -a "v$(PLUGIN_VERSION)" -m "Release v$(PLUGIN_VERSION)"
 	@echo "Tag v$(PLUGIN_VERSION) created. Push with: git push origin v$(PLUGIN_VERSION)"
 
-## Full release build: clean, checks, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, sign, and checksum.
+## Full release build: clean, checks, style, tests, build, SBOM audit, govulncheck, CodeQL, bundle with SBOMs, sign, and checksum.
 .PHONY: release
-release: release-check clean all sbom-audit codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
+release: release-check clean all sbom-audit govulncheck codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
 	@echo ""
 	@echo "=========================================="
 	@echo "Release build complete!"
@@ -783,6 +783,7 @@ deploy-local: dist
 # one go.mod pins, and GOTOOLCHAIN=local then fails the install mid-release.
 CYCLONEDX_GOMOD_VERSION ?= v1.12.0
 GRYPE_VERSION ?= v0.119.0
+GOVULNCHECK_VERSION ?= v1.9.0
 
 ## Install SBOM generation tools
 .PHONY: install-sbom-tools
@@ -838,6 +839,25 @@ endif
 ## Generate SBOMs and scan for vulnerabilities
 .PHONY: sbom-audit
 sbom-audit: sbom sbom-scan
+
+## Install govulncheck
+.PHONY: install-govulncheck
+install-govulncheck: require-network
+	@if [ "$$($(GO) version -m $(GOBIN)/govulncheck 2>/dev/null | awk '$$1=="mod"{print $$3}')" != "$(GOVULNCHECK_VERSION)" ]; then \
+		echo "Installing govulncheck $(GOVULNCHECK_VERSION)..."; \
+		mkdir -p $(GOBIN); \
+		GOBIN=$(GOBIN) $(GO) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); \
+	else \
+		echo "govulncheck $(GOVULNCHECK_VERSION) already installed"; \
+	fi
+
+## Scan the server for known Go vulnerabilities its code actually reaches (fails on any)
+.PHONY: govulncheck
+govulncheck: install-govulncheck
+ifneq ($(HAS_SERVER),)
+	@echo "Scanning server code for reachable Go vulnerabilities..."
+	$(GOBIN)/govulncheck ./server/...
+endif
 
 # ====================================================================================
 # CodeQL Security Analysis

@@ -26,6 +26,7 @@ within a few business days.
 | SBOM generation (CycloneDX) | `make sbom` | `security.yml`, `release.yml` | — |
 | Dependency CVE scan (Grype) | `make sbom-scan` | `security.yml`, `release.yml` | Fails on **HIGH/CRITICAL** |
 | SBOM + scan in one step | `make sbom-audit` | — | Fails on **HIGH/CRITICAL** |
+| Reachable Go vulnerabilities (govulncheck) | `make govulncheck` | `security.yml`, `release.yml` | Fails on any vulnerability the server code calls |
 | Static analysis (CodeQL, Go + JS/TS) | `make codeql-analyze` | `security.yml`, `release.yml` | — |
 | CodeQL finding gate | `make security-gate` | `security.yml`, `release.yml` | Fails on **error-level** findings |
 | Malware scan of artifacts (ClamAV) | `make virus-scan` | `release.yml` | Fails on infected files |
@@ -60,6 +61,9 @@ The SARIF upload steps are **visibility-aware** via
 ```sh
 # Dependency CVEs (generates SBOMs, scans them, fails on HIGH/CRITICAL)
 make sbom-audit
+
+# Go vulnerabilities the server code actually calls (including the stdlib)
+make govulncheck
 
 # Static analysis (downloads the CodeQL CLI bundle on first run, ~500MB)
 make codeql-analyze
