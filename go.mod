@@ -3,7 +3,7 @@ module github.com/MattermostFederal/mattermost-plugin-template
 go 1.26.9
 
 require (
-	github.com/mattermost/mattermost/server/public v0.4.4
+	github.com/mattermost/mattermost/server/public v0.5.0
 	github.com/pkg/errors v0.9.1
 )
 
