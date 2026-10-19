@@ -140,7 +140,7 @@ jobs:
       # won't produce both SARIFs.
       - name: Upload Go CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-go.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: dist/codeql-go.sarif
           category: codeql-go-release
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload JS/TS CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-js.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: dist/codeql-js.sarif
           category: codeql-js-release
@@ -183,7 +183,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Download the release files
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-files
 
