@@ -36,7 +36,7 @@ provide:
 
 | Requirement | Version | Why |
 |---|---|---|
-| Go | the version in `go.mod` (currently **1.26.9**) or newer | Offline builds set `GOTOOLCHAIN=local`, which forbids downloading a toolchain. Go would otherwise fetch the exact version named in `go.mod` from the module proxy. |
+| Go | the version in `go.mod` (currently **1.26.10**) or newer | Offline builds set `GOTOOLCHAIN=local`, which forbids downloading a toolchain. Go would otherwise fetch the exact version named in `go.mod` from the module proxy. |
 | Node.js | the major version in `.nvmrc` | Several dependencies declare `engines: node >= 22`. |
 | npm | ships with Node | Installs from the staged cache. |
 | GNU make, tar | any recent | Build driver and packaging. |
@@ -192,7 +192,7 @@ docker run --rm --network none \
 
 ## Troubleshooting
 
-**`go: go.mod requires go >= 1.26.9 (running go X.Y.Z; GOTOOLCHAIN=local)`**
+**`go: go.mod requires go >= 1.26.10 (running go X.Y.Z; GOTOOLCHAIN=local)`**
 The enclave's Go is older than `go.mod` requires. Install a newer Go; the build
 will not download one.
 
