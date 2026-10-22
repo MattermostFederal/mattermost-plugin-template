@@ -158,6 +158,7 @@ jobs:
           private-key: ${{ secrets.PREVIEW_CHECKOUT_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: pr-preview
+          permission-contents: read
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
