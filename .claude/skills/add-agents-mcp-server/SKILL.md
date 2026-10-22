@@ -34,7 +34,7 @@ Confirm these still hold before starting:
 
 - **`min_server_version`** is `11.8.0` in `plugin.json`, above the `11.3` the
   helper's `Plugin.PluginHTTPStream` needs. No bump required.
-- **Go** is `1.26.9` in the single root `go.mod`. There is no `server/go.mod`;
+- **Go** is `1.26.10` in the single root `go.mod`. There is no `server/go.mod`;
   the module is `github.com/MattermostFederal/mattermost-plugin-template`
   and everything under `server/` is `package main`. If this plugin was created
   from the template and renamed, use its own module path and id throughout.
