@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.2.2...v0.3.0) (2026-10-25)
+
+
+### Features
+
+* **preview:** add a .preview hook shared by PR previews and make deploy ([#66](https://github.com/MattermostFederal/mattermost-plugin-template/issues/66)) ([1c40ab4](https://github.com/MattermostFederal/mattermost-plugin-template/commit/1c40ab40b8867a63c85906ee56b2f364553710bf))
+* **security:** gate releases on govulncheck ([#65](https://github.com/MattermostFederal/mattermost-plugin-template/issues/65)) ([6811ca1](https://github.com/MattermostFederal/mattermost-plugin-template/commit/6811ca169413cdc87cebe9957266cd914029244f))
+
+
+### Bug Fixes
+
+* **build:** build Go tools with the module's toolchain ([#61](https://github.com/MattermostFederal/mattermost-plugin-template/issues/61)) ([f80164c](https://github.com/MattermostFederal/mattermost-plugin-template/commit/f80164c90cf6e0c0d912bbd407ad739d4daa0eb5))
+
+
+### Dependencies
+
+* combine open Dependabot updates (Go, webapp, actions) ([#70](https://github.com/MattermostFederal/mattermost-plugin-template/issues/70)) ([f21d021](https://github.com/MattermostFederal/mattermost-plugin-template/commit/f21d021b6d242e3ef209fea75a71dc41602de8b7))
+
 ## [0.2.2](https://github.com/MattermostFederal/mattermost-plugin-template/compare/v0.2.1...v0.2.2) (2026-10-13)
 
 
